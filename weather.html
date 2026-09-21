@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>雷達回波 & 動態雲圖專業觀測儀表板 | 交通部中央氣象署觀測圖資</title>
+  <meta name="description" content="提供中央氣象署高解析度即時動態雷達回波、衛星雲圖與氣象觀測影像播放器，支援雙視窗同步對比與逐格分析。">
+  <link rel="stylesheet" href="weather.css">
+</head>
+<body>
+
+  <!-- 頂部導航列 -->
+  <header class="navbar-cwa">
+    <div class="cwa-brand">
+      <div class="cwa-logo-badge">📡</div>
+      <div>
+        <h1 class="cwa-title">雷達合成回波 & 動態衛星雲圖觀測儀表板</h1>
+        <p class="cwa-subtitle">即時串聯交通部中央氣象署 (CWA) 觀測動態圖資</p>
+      </div>
+    </div>
+    <div class="navbar-right">
+      <button class="btn-mode-toggle" id="themeToggleBtn" title="切換暗色戰情室風格">🌙 暗色模式</button>
+      <div class="status-badge" id="statusBadge">
+        <span class="pulse-dot"></span>
+        <span id="statusText">即時連線中...</span>
+      </div>
+      <button class="btn-mode-toggle" id="refreshBtn" title="重新抓取最新影格">🔄 重新整理</button>
+    </div>
+  </header>
+
+  <!-- 氣象署即時警特報資訊跑馬燈 -->
+  <div class="alert-banner" id="alertBanner">
+    <div class="alert-content">
+      <span class="alert-tag" id="alertTag">氣象動態</span>
+      <span id="alertMessage">目前中央氣象署全台陸上天候大致平穩，雷達監控系統正常運作中。</span>
+    </div>
+    <span style="font-size: 0.78rem; opacity: 0.8;" id="alertTime">同步更新</span>
+  </div>
+
+  <div class="app-container">
+    <!-- 上方模式切換標籤 (Tabs) 與檢視模式 -->
+    <nav class="mode-tabs-wrapper">
+      <div class="tabs-left">
+        <button class="mode-tab active" data-mode="radar_notopo">無地形雷達</button>
+        <button class="mode-tab" data-mode="radar_topo">有地形雷達</button>
+        <button class="mode-tab" data-mode="sat_color">動態雲圖 (色調強化)</button>
+        <button class="mode-tab" data-mode="sat_gray">動態雲圖 (黑白)</button>
+        <button class="mode-tab" data-mode="temperature">全台氣溫分佈</button>
+      </div>
+
+      <div class="view-mode-buttons">
+        <button class="btn-mode-toggle active" id="btnSingleView">📺 單一視窗</button>
+        <button class="btn-mode-toggle" id="btnDualView">🔀 雙視窗同步對比</button>
+      </div>
+    </nav>
+
+    <!-- 主介面佈局：左側控制器 + 右側動態畫布 -->
+    <main class="main-layout">
+      <!-- 左側操作與設定面板 -->
+      <aside class="control-sidebar">
+        <!-- 範圍選擇 -->
+        <section class="control-section" id="areaSelectSection">
+          <div class="section-label">📍 觀測區域範圍</div>
+          <div class="radio-group">
+            <label class="custom-radio">
+              <input type="radio" name="areaRange" value="tw" checked>
+              <span>臺灣鄰近區域</span>
+            </label>
+            <label class="custom-radio">
+              <input type="radio" name="areaRange" value="wide">
+              <span>較大範圍區域</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- 單張顯示 (靜態) 時間選擇 -->
+        <section class="control-section">
+          <div class="section-label">
+            <span>📅 單張顯示 ( 靜態 )</span>
+            <span class="shortcut-pill">下拉選擇</span>
+          </div>
+          <select class="time-select" id="timeSelect">
+            <option value="">載入時間影格中...</option>
+          </select>
+        </section>
+
+        <!-- 動態播放控制按鈕 -->
+        <section class="control-section">
+          <div class="section-label">
+            <span>⏯️ 播放控制</span>
+            <span class="shortcut-pill">空白鍵 Space</span>
+          </div>
+          <div class="play-btn-group">
+            <button class="btn-playback btn-play" id="btnPlay">▶ 播放</button>
+            <button class="btn-playback btn-stop" id="btnStop">⏹ 停止</button>
+            <button class="btn-step" id="btnPrevFrame" title="鍵盤左鍵 ← 倒退一格">⏮ 上一格</button>
+            <button class="btn-step" id="btnNextFrame" title="鍵盤右鍵 → 前進一格">⏭ 下一格</button>
+            <span class="play-hint" id="playStatusHint">就緒</span>
+          </div>
+        </section>
+
+        <!-- 動態時長範圍 -->
+        <section class="control-section">
+          <div class="section-label">⏱️ 動態影格長度</div>
+          <div class="radio-group">
+            <label class="custom-radio">
+              <input type="radio" name="timeSpan" value="3" checked>
+              <span>3小時</span>
+            </label>
+            <label class="custom-radio">
+              <input type="radio" name="timeSpan" value="6">
+              <span>6小時</span>
+            </label>
+            <label class="custom-radio">
+              <input type="radio" name="timeSpan" value="9">
+              <span>9小時</span>
+            </label>
+            <label class="custom-radio">
+              <input type="radio" name="timeSpan" value="12">
+              <span>12小時</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- 時間軸拉桿 (Timeline Scrubber) -->
+        <section class="control-section timeline-slider-wrapper">
+          <div class="section-label">
+            <span>🎞️ 動態影格時間軸</span>
+            <span class="shortcut-pill">拖曳滑桿</span>
+          </div>
+          <input type="range" class="timeline-slider" id="timelineSlider" min="0" max="0" value="0">
+          <div class="timeline-ticks">
+            <span id="tickPast">歷史</span>
+            <span id="tickNow">最新</span>
+          </div>
+        </section>
+
+        <!-- 播放速度設定 -->
+        <section class="speed-control-box">
+          <div class="speed-title" id="speedLabel">播放速度 ( 0.8 秒 )</div>
+          <input type="range" class="speed-slider" id="speedSlider" min="0.2" max="2.0" step="0.1" value="0.8">
+          <div class="loop-mode-group">
+            <label class="loop-radio">
+              <input type="radio" name="loopMode" value="loop" checked>
+              <span>🔁 循環播放</span>
+            </label>
+            <label class="loop-radio">
+              <input type="radio" name="loopMode" value="once">
+              <span>▶| 單次播放</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- 鍵盤快捷鍵指南卡片 -->
+        <div class="keyboard-guide-card">
+          <div class="keyboard-guide-title">⌨️ 快捷鍵微調操作</div>
+          <div><span class="kbd-tag">Space</span> 播放 / 暫停</div>
+          <div><span class="kbd-tag">←</span> <span class="kbd-tag">→</span> 逐影格倒退 / 前進（慢動作觀察）</div>
+          <div><span class="kbd-tag">↑</span> <span class="kbd-tag">↓</span> 加速 / 減速</div>
+        </div>
+
+        <!-- 顏色說明與圖例 -->
+        <section class="legend-card">
+          <div class="legend-title" id="legendTitle">雷達回波顏色說明 (無地形)</div>
+          <div class="dbz-bar-image" id="legendGradientBar"></div>
+          <div class="dbz-ticks" id="legendTicks">
+            <span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>dBZ</span>
+          </div>
+          <div class="legend-desc" id="legendDescText">
+            雷達發射之電磁波經由大氣中的降水粒子反射回來的訊號稱為雷達回波，顏色越暖紅代表降雨強度越高。
+          </div>
+        </section>
+      </aside>
+
+      <!-- 右側核心雷達/雲圖主視窗 -->
+      <section class="viewer-card" id="viewerCard">
+        <!-- 頂部黑色時間資訊列 -->
+        <div class="viewer-top-bar">
+          <div class="current-frame-timestamp">
+            <span id="displayTimestamp">----/--/-- --:--</span>
+            <span class="frame-counter-badge" id="frameCounterBadge">影格 0 / 0</span>
+          </div>
+          <div class="viewer-actions">
+            <button class="btn-tool" id="btnDownloadSnapshot" title="下載當前高解析度影格截圖">💾 儲存高清影格</button>
+            <button class="btn-tool" id="btnFullscreen">⛶ 全螢幕檢視</button>
+          </div>
+        </div>
+
+        <!-- 動態影像展示畫布容器 (支援單視窗與雙視窗) -->
+        <div class="viewer-content-container" id="viewerContainer">
+          <!-- 載入中遮罩 -->
+          <div class="loader-overlay" id="loaderOverlay">
+            <div class="spinner"></div>
+            <span style="font-size: 0.9rem; color: var(--text-main); font-weight: 600;">載入最新影格中...</span>
+          </div>
+
+          <!-- 主畫面視窗 (左/單) -->
+          <div class="image-canvas-wrapper" id="primaryWrapper">
+            <div class="canvas-label-badge" id="primaryBadge">雷達回波</div>
+            <img id="weatherDisplayImg" class="weather-dynamic-img" alt="CWA 即時氣象觀測影像" src="">
+          </div>
+
+          <!-- 雙視窗對比副視窗 (右，雙視窗模式下顯示) -->
+          <div class="image-canvas-wrapper" id="secondaryWrapper" style="display: none;">
+            <div class="canvas-label-badge" id="secondaryBadge">衛星雲圖 (色調強化)</div>
+            <img id="secondaryDisplayImg" class="weather-dynamic-img" alt="CWA 衛星雲圖對比影像" src="">
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 依序載入設定檔與邏輯腳本 -->
+  <script src="config.js"></script>
+  <script src="weather.js"></script>
+</body>
+</html>
