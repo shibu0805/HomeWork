@@ -67,6 +67,7 @@ flowchart TD
 | `weather.html` | 🌦️ 氣象觀測儀表板主頁面 |
 | `weather.css` | 🎨 專屬樣式表（含暗色模式、雙視窗佈局） |
 | `weather.js` | ⚙️ 核心邏輯（API 串接、動態播放引擎、鍵盤操控） |
+| `taiwan-map.js` | 🗺️ 台灣 22 縣市 SVG 向量地圖資料 |
 
 ---
 
@@ -74,7 +75,7 @@ flowchart TD
 
 ```bash
 # 進入專案資料夾
-cd HomeWork
+cd HomeWork/02-weather-dashboard
 
 # 使用 Python 啟動本地伺服器
 python -m http.server 8000
@@ -85,7 +86,6 @@ python -m http.server 8000
 | 頁面 | 網址 |
 | :--- | :--- |
 | 🌦️ 動態氣象觀測儀表板 | `http://localhost:8000/weather.html` |
-| 🏠 個人作業首頁 | `http://localhost:8000/index.html` |
 
 ---
 
