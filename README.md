@@ -82,7 +82,7 @@ HomeWork/
 
 - 🏠 **個人作業首頁**：[https://shibu0805.github.io/HomeWork/01-personal-homepage/index.html](https://shibu0805.github.io/HomeWork/01-personal-homepage/index.html)
 - 🌦️ **CWA 動態氣象觀測儀表板**：[https://shibu0805.github.io/HomeWork/02-weather-dashboard/weather.html](https://shibu0805.github.io/HomeWork/02-weather-dashboard/weather.html)
-- 📊 **50 Startups 回歸分析比較**：[https://shibu0805.github.io/HomeWork/03-ml-regression/regression.html](https://shibu0805.github.io/HomeWork/03-ml-regression/regression.html)
+- 📊 **DIC2-多元線性回歸 50-startup**：[https://shibu0805.github.io/HomeWork/03-ml-regression/regression.html](https://shibu0805.github.io/HomeWork/03-ml-regression/regression.html)
 
 ---
 
