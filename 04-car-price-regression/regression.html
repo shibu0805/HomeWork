@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Car Price 回歸比較</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --surface: #ffffff;
+      --surface-2: #f0f2f8;
+      --border: #e2e5ef;
+      --text: #1a1d29;
+      --muted: #646a80;
+      --accent: #4f46e5;
+      --good: #059669;
+      --bad: #dc2626;
+      --shadow: 0 1px 2px rgba(20, 24, 40, .05), 0 4px 16px rgba(20, 24, 40, .06);
+      --c1: #4f46e5; --c2: #0891b2; --c3: #059669; --c4: #d97706; --c5: #db2777;
+      --n1: #fca5a5; --n2: #fbbf24; --n3: #60a5fa; --n4: #1d4ed8;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0e1018; --surface: #171a26; --surface-2: #1f2333; --border: #2a2f44;
+        --text: #e8eaf3; --muted: #9298b0; --accent: #818cf8; --good: #34d399; --bad: #f87171;
+        --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+        --c1: #818cf8; --c2: #22d3ee; --c3: #34d399; --c4: #fbbf24; --c5: #f472b6;
+        --n1: #fca5a5; --n2: #fcd34d; --n3: #93c5fd; --n4: #60a5fa;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0e1018; --surface: #171a26; --surface-2: #1f2333; --border: #2a2f44;
+      --text: #e8eaf3; --muted: #9298b0; --accent: #818cf8; --good: #34d399; --bad: #f87171;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+      --c1: #818cf8; --c2: #22d3ee; --c3: #34d399; --c4: #fbbf24; --c5: #f472b6;
+      --n1: #fca5a5; --n2: #fcd34d; --n3: #93c5fd; --n4: #60a5fa;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: "Noto Sans TC", system-ui, sans-serif; line-height: 1.6;
+    }
+    .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 16px 64px; }
+
+    header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+    h1 { font-size: clamp(1.5rem, 3.5vw, 2.2rem); font-weight: 900; margin: 0 0 6px; letter-spacing: -.01em; }
+    h2 { font-size: 1.2rem; margin: 0 0 4px; }
+    h3 { font-size: 1rem; margin: 0; }
+    .sub { color: var(--muted); margin: 0; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .chip { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px; font-size: .82rem; color: var(--muted); }
+    .chip b { color: var(--text); }
+    .btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 7px 14px; cursor: pointer; font: inherit; font-size: .88rem; }
+    .btn:hover { border-color: var(--accent); }
+
+    /* 訓練筆數切換列 */
+    .size-bar { position: sticky; top: 0; z-index: 10; margin: 20px -16px 0; padding: 12px 16px; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .size-bar .lbl { font-weight: 700; font-size: .95rem; }
+    .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface); }
+    .seg button { border: 0; background: transparent; color: var(--text); padding: 8px 18px; cursor: pointer; font: inherit; font-size: .92rem; border-right: 1px solid var(--border); }
+    .seg button:last-child { border-right: 0; }
+    .seg button.active { background: var(--accent); color: #fff; font-weight: 700; }
+    .size-bar .hint { color: var(--muted); font-size: .85rem; }
+
+    section { margin-top: 40px; }
+    .section-head { margin-bottom: 14px; }
+    .section-head p { color: var(--muted); margin: 0; font-size: .92rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 18px; min-width: 0; }
+
+    /* 排名卡片 */
+    .ranks { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+    .rank-card { border-top: 4px solid var(--mc); cursor: pointer; transition: transform .15s; }
+    .rank-card:hover { transform: translateY(-2px); }
+    .rank-card.active { outline: 2px solid var(--mc); }
+    .rank-no { font-size: .78rem; font-weight: 700; color: var(--mc); letter-spacing: .05em; }
+    .rank-name { font-weight: 700; font-size: 1.05rem; margin: 2px 0 0; }
+    .rank-en { font-size: .75rem; color: var(--muted); }
+    .rank-rmse { font-size: 1.45rem; font-weight: 600; margin-top: 10px; }
+    .rank-rmse small { font-size: .75rem; color: var(--muted); font-weight: 400; }
+    .rank-meta { display: flex; justify-content: space-between; font-size: .82rem; color: var(--muted); margin-top: 4px; }
+    .rank-params { font-size: .72rem; color: var(--muted); margin-top: 10px; word-break: break-word; }
+
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .tab { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 6px 16px; cursor: pointer; font: inherit; font-size: .9rem; }
+    .tab.active { background: var(--mc); border-color: var(--mc); color: #fff; }
+    .model-info { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; margin-bottom: 12px; }
+    .model-info .module { font-size: .78rem; color: var(--muted); }
+    .model-info .desc { font-size: .88rem; color: var(--muted); margin: 0; }
+
+    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; }
+    .tile .lbl { font-size: .76rem; color: var(--muted); }
+    .tile .num { font-size: 1.15rem; font-weight: 600; }
+    .tile .delta { font-size: .72rem; color: var(--muted); }
+    .tile .delta.up { color: var(--good); }
+    .tile .delta.down { color: var(--bad); }
+
+    /* 仿 matplotlib 的圖 */
+    .mpl { background: #fff; border-radius: 12px; border: 1px solid var(--border); padding: 12px; }
+    .mpl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .figure-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+    th, td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th { color: var(--muted); font-weight: 500; font-size: .78rem; background: var(--surface-2); }
+    th:first-child, td:first-child { text-align: left; }
+    td.l, th.l { text-align: left; }
+    td.best { color: var(--good); font-weight: 700; }
+    td.pos { color: var(--bad); }
+    td.neg { color: var(--good); }
+    th.sel, td.sel { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .stack { display: grid; gap: 16px; }
+    .chart-box { position: relative; height: 300px; }
+    .chart-box.tall { height: 520px; }
+    .feat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+    .feat { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; font-size: .85rem; display: flex; justify-content: space-between; gap: 8px; }
+    .feat .t { font-size: .74rem; color: var(--muted); white-space: nowrap; }
+    .feat.cat { border-left: 3px solid var(--c4); }
+    .feat.num { border-left: 3px solid var(--c2); }
+    .feat .zh { display: block; font-size: .74rem; color: var(--muted); font-family: "Noto Sans TC", sans-serif; }
+
+    /* 導覽：這個網站在做什麼 */
+    .intro { margin-top: 24px; display: grid; gap: 16px; }
+    .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .step { background: var(--surface-2); border-radius: 12px; padding: 14px 16px; position: relative; }
+    .step .no { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: .85rem; margin-bottom: 6px; }
+    .step h3 { margin-bottom: 4px; }
+    .step p { margin: 0; font-size: .88rem; color: var(--muted); }
+    .findings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .finding { border-left: 4px solid var(--good); }
+    .finding .big { font-size: 1.5rem; font-weight: 700; }
+    .finding p { margin: 4px 0 0; font-size: .88rem; color: var(--muted); }
+    .glossary { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: .86rem; color: var(--muted); }
+    .glossary b { color: var(--text); }
+    .howto { margin-top: 10px; font-size: .86rem; color: var(--muted); background: color-mix(in srgb, var(--accent) 7%, transparent); border-radius: 10px; padding: 8px 12px; }
+    .howto::before { content: "💡 怎麼看："; font-weight: 700; color: var(--text); }
+    @media (max-width: 720px) { .steps, .findings { grid-template-columns: 1fr; } }
+    .chart-title { font-weight: 700; font-size: .95rem; margin: 0 0 8px; }
+
+    .note { background: var(--surface-2); border-left: 4px solid var(--accent); border-radius: 8px; padding: 12px 16px; font-size: .9rem; color: var(--muted); }
+    .note b { color: var(--text); }
+    .note ul { margin: 6px 0 0; padding-left: 20px; }
+    footer { margin-top: 48px; text-align: center; color: var(--muted); font-size: .82rem; }
+
+    @media (max-width: 1000px) { .ranks { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 720px) { .grid-2, .mpl-grid { grid-template-columns: 1fr; } .ranks { grid-template-columns: repeat(2, minmax(0, 1fr)); } .seg button { padding: 8px 12px; } }
+    @media (max-width: 420px) { .ranks { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Car Price — 24 個特徵 × 五種線性回歸</h1>
+      <p class="sub">Kaggle Car Price Prediction 資料集：分別用 40 / 80 / 120 / 164 筆資料訓練 sklearn.linear_model 五種模型，預測同樣的 41 筆車價，比較最終模型的預測誤差</p>
+      <div class="chips" id="chips"></div>
+    </div>
+    <button class="btn" id="themeBtn" type="button">🌓 切換主題</button>
+  </header>
+
+  <div class="intro">
+    <div class="steps">
+      <div class="step"><span class="no">1</span><h3>準備資料</h3><p>把文字欄位（廠牌、車身型式…）轉成數字，所有規格統一尺度，電腦才能計算。</p></div>
+      <div class="step"><span class="no">2</span><h3>讓模型學習</h3><p>先藏起 41 台車當「考題」，其餘的車分別只給 40 / 80 / 120 / 164 台讓 5 種模型學。</p></div>
+      <div class="step"><span class="no">3</span><h3>考試、比較</h3><p>請模型估那 41 台沒看過的車，看誰估得最接近真實售價。</p></div>
+    </div>
+    <div class="findings" id="findings"></div>
+    <div class="card glossary">
+      <span>📖 名詞小抄：</span>
+      <span><b>RMSE</b>：平均大約估錯多少美元，<b>越小越好</b></span>
+      <span><b>R²</b>：模型解釋了多少比例的價格差異，<b>越接近 1 越好</b></span>
+      <span><b>訓練筆數</b>：模型能拿來學習的車輛數</span>
+    </div>
+  </div>
+
+  <div class="size-bar">
+    <span class="lbl">🎚 訓練筆數</span>
+    <div class="seg" id="sizeSeg"></div>
+    <span class="hint" id="sizeHint"></span>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <h2>🚗 資料集與 24 個特徵</h2>
+      <p id="featDesc"></p>
+    </div>
+    <div class="card"><div class="feat-grid" id="featGrid"></div>
+      <div class="howto">藍色是數值規格，r 表示和車價的關聯（越接近 ±1 關聯越強，例如引擎越大車越貴）；橘色是文字類別，會拆成「是不是 toyota」「是不是 bmw」這種 0/1 欄位。</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>🏆 模型排名</h2>
+      <p id="rankDesc"></p>
+    </div>
+    <div class="ranks" id="ranks"></div>
+    <div class="howto">大數字是平均估錯的金額（美元），越小越準。按上方「訓練筆數」可以切換成資料較少的情況，看看排名怎麼變。</div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>📉 訓練筆數 vs 預測誤差（學習曲線）</h2>
+      <p>同樣預測那 41 筆，訓練資料越多，誤差通常越小；曲線趨於平緩代表再加資料的幫助有限。</p>
+    </div>
+    <div class="grid-2">
+      <div class="card"><p class="chart-title">RMSE by Training Size</p><div class="chart-box"><canvas id="lcRmse"></canvas></div></div>
+      <div class="card"><p class="chart-title">R-squared by Training Size</p><div class="chart-box"><canvas id="lcR2"></canvas></div></div>
+    </div>
+    <div class="card table-wrap" style="margin-top:16px"><table id="lcTable"></table></div>
+    <div class="howto">左圖線條往下、右圖線條往上，代表資料越多估得越準。注意最左邊（只有 40 筆）時，標準線性回歸明顯比其他四種差。</div>
+  </section>
+
+  <section id="detail">
+    <div class="section-head">
+      <h2>🔍 單一模型詳細結果</h2>
+      <p>切換模型，查看所選訓練筆數下的誤差、特徵數量圖，以及 40 / 80 / 120 / 164 筆訓練的最終預測對照。</p>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="model-info" id="modelInfo"></div>
+      <div class="tiles" id="tiles" style="margin-bottom:0"></div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="figure-head">
+          <h3 id="mplTitle">📈 特徵數量 vs 誤差（Forward Selection）</h3>
+          <button class="btn" id="dlBtn" type="button">⬇ 下載圖片</button>
+        </div>
+        <div class="mpl">
+          <div class="mpl-grid">
+            <div class="chart-box"><canvas id="mplRmse"></canvas></div>
+            <div class="chart-box"><canvas id="mplR2"></canvas></div>
+          </div>
+        </div>
+        <div class="howto">從 1 個規格開始，每次多加一個「最有幫助」的規格。RMSE 先快速下降，到某個點後不再變好甚至變差，代表規格不是越多越好。</div>
+        <div class="table-wrap" style="margin-top:14px"><table id="fsTable"></table></div>
+      </div>
+
+      <div class="card">
+        <p class="chart-title">41 筆最終預測對照（不同訓練筆數）</p>
+        <div class="table-wrap"><table id="predTable"></table></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card"><p class="chart-title">Actual vs Predicted Price</p><div class="chart-box tall"><canvas id="scatterChart"></canvas></div></div>
+        <div class="card"><p class="chart-title" id="coefTitle"></p><div class="chart-box tall"><canvas id="coefChart"></canvas></div></div>
+      </div>
+      <div class="howto">左圖每個點是一台車，越靠近紅色虛線代表估得越準。右圖是模型認為最影響車價的因素：綠色往右代表會讓車變貴，紅色往左代表會讓車變便宜。</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>📊 五模型比較</h2>
+      <p id="compareDesc"></p>
+    </div>
+    <div class="card table-wrap"><table id="metricsTable"></table></div>
+    <div class="grid-2" style="margin-top:16px">
+      <div class="card"><p class="chart-title">預測集 RMSE / MAE</p><div class="chart-box"><canvas id="errChart"></canvas></div></div>
+      <div class="card"><p class="chart-title">Train vs Test RMSE（Overfit 檢查）</p><div class="chart-box"><canvas id="fitChart"></canvas></div></div>
+      <div class="card"><p class="chart-title">RMSE by Number of Features（五模型）</p><div class="chart-box"><canvas id="kRmseChart"></canvas></div></div>
+      <div class="card"><p class="chart-title">R-squared by Number of Features（五模型）</p><div class="chart-box"><canvas id="kR2Chart"></canvas></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="note">
+      <b>📝 說明</b>
+      <ul>
+        <li><b>資料集</b>：<a href="https://www.kaggle.com/datasets/hellbuoy/car-price-prediction" target="_blank" rel="noopener">Kaggle — Car Price Prediction</a>（CarPrice_Assignment.csv），205 筆，移除流水號 <span class="mono">car_ID</span> 後共 24 個特徵，目標為 <span class="mono">price</span>。</li>
+        <li><b>前處理</b>：<span class="mono">CarName</span> 取第一個字作為廠牌 <span class="mono">brand</span>，並修正拼錯的廠牌（maxda → mazda、vw / vokswagen → volkswagen、toyouta → toyota、porcshce → porsche）；<span class="mono">cylindernumber</span>（four、six…）轉成數字。9 個類別特徵以 One-Hot 編碼，展開後連同 15 個數值特徵全部標準化。</li>
+        <li><b>資料切分</b>：以 <span class="mono">train_test_split(test_size=41, random_state=0)</span> 固定 41 筆（20%）作為預測集；其餘 164 筆依序取前 40 / 80 / 120 / 164 筆當訓練集（40 ⊂ 80 ⊂ 120 ⊂ 164）。</li>
+        <li><b>最佳參數</b>：每種訓練筆數都只用自己的訓練資料做 5-fold CV 網格搜尋，不使用預測集。</li>
+        <li><b>Forward Selection</b>：以「原始特徵」為單位，每一步加入讓預測集 RMSE 最低的特徵；類別特徵的 One-Hot 欄位整組一起加入，所以橫軸是 1 ~ 24 個特徵。</li>
+        <li><b>誤差指標</b>：MSE、RMSE、MAE、R²、Adjusted R²（n=41, p=24）、MAPE、最大誤差，另附訓練集 RMSE 與 CV RMSE。</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>國立中興大學 Vibe Coding 作業 · scikit-learn 多元線性回歸（Car Price）</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="results.js"></script>
+<script>
+(() => {
+  const R = window.RESULTS;
+  if (!R || !R.models[0].runs) {
+    document.querySelector('.wrap').insertAdjacentHTML('afterbegin',
+      '<div class="note"><b>找不到 results.js</b>，請先執行 <span class="mono">python analyze.py</span>。</div>');
+    return;
+  }
+  const ds = R.dataset;
+  const SIZES = ds.train_sizes;
+  const FINAL = SIZES[SIZES.length - 1];
+  const models = R.models;
+  const byKey = Object.fromEntries(models.map(m => [m.key, m]));
+  let n = FINAL;
+  let current = null;
+
+  const COLOR_VARS = ['--c1', '--c2', '--c3', '--c4', '--c5'];
+  const SIZE_VARS = ['--n1', '--n2', '--n3', '--n4'];
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const colorOf = key => css(COLOR_VARS[models.findIndex(m => m.key === key)]);
+  const sizeColor = s => css(SIZE_VARS[SIZES.indexOf(s)]);
+  const fmt = (v, d = 2) => v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const money = v => fmt(v, 0);
+  const num = v => typeof v === 'number' ? (Math.abs(v) >= 1000 ? fmt(v, 0) : +v.toPrecision(4) + '') : String(v);
+  const run = (m, s = n) => m.runs[s];
+  const ranked = (s = n) => [...models].sort((a, b) => run(a, s).test.rmse - run(b, s).test.rmse);
+  current = ranked()[0].key;
+
+  // ---------------------------------------------------------------- 主題
+  const root = document.documentElement;
+  try { const t = localStorage.getItem('reg-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+  document.getElementById('themeBtn').onclick = () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('reg-theme', root.dataset.theme); } catch (e) {}
+    renderAll();
+  };
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!root.dataset.theme) renderAll(); });
+
+  // ---------------------------------------------------------------- 上方資訊與切換列
+  document.getElementById('chips').innerHTML = [
+    ['資料', `${ds.n_total} 筆`], ['預測集', `固定 ${ds.n_test} 筆`], ['訓練筆數', SIZES.join(' / ')],
+    ['random_state', ds.random_state], ['目標', ds.target], ['sklearn', ds.sklearn],
+  ].map(([k, v]) => `<span class="chip">${k} <b>${v}</b></span>`).join('');
+
+  // ---------------------------------------------------------------- 導覽：三個重點發現（依 results.js 動態計算）
+  const SMALL = SIZES[0];
+  const best = ranked(FINAL)[0], bestSmall = ranked(SMALL)[0];
+  const olsSmall = run(byKey.linear, SMALL).test.r2;
+  const fc = run(best, FINAL).feature_curve;
+  const bestK = fc.reduce((a, c) => c.rmse < a.rmse ? c : a, fc[0]);
+  document.getElementById('findings').innerHTML = [
+    [`R² ${run(best, FINAL).test.r2.toFixed(2)}`,
+     `資料充足（${FINAL} 筆）時，最準的是「${best.name}」，平均約估錯 ${money(run(best, FINAL).test.rmse)} 美元（平均車價約 13,000 美元）。`],
+    [`${olsSmall.toFixed(2)} → ${run(bestSmall, SMALL).test.r2.toFixed(2)}`,
+     `資料很少（${SMALL} 筆）時，沒有正則化的標準線性回歸 R² 只有 ${olsSmall.toFixed(2)}；「${bestSmall.name}」能提升到 ${run(bestSmall, SMALL).test.r2.toFixed(2)}。`],
+    [`${bestK.k} / ${ds.features.length} 個`,
+     `用約 ${bestK.k} 個規格就達到最低誤差，全部 ${ds.features.length} 個都用反而變差。最重要的是 ${fc.slice(0, 3).map(c => c.added).join('、')}。`],
+  ].map(([big, txt], i) => `<div class="card finding"><div style="font-size:.78rem;color:var(--muted)">發現 ${i + 1}</div><div class="big mono">${big}</div><p>${txt}</p></div>`).join('');
+
+  const ZH = {
+    symboling: '保險風險等級', wheelbase: '軸距', carlength: '車長', carwidth: '車寬', carheight: '車高',
+    curbweight: '車重', cylindernumber: '汽缸數', enginesize: '引擎排氣量', boreratio: '缸徑', stroke: '活塞衝程',
+    compressionratio: '壓縮比', horsepower: '馬力', peakrpm: '最高轉速', citympg: '市區油耗', highwaympg: '高速油耗',
+    brand: '廠牌', fueltype: '燃料（汽油／柴油）', aspiration: '進氣（自然／渦輪）', doornumber: '車門數',
+    carbody: '車身型式', drivewheel: '驅動方式', enginelocation: '引擎位置', enginetype: '引擎型式', fuelsystem: '供油系統',
+  };
+  const info = ds.feature_info;
+  const nNum = info.filter(f => f.type === 'numeric').length;
+  document.getElementById('featDesc').textContent =
+    `共 ${info.length} 個特徵：${nNum} 個數值特徵（右側為與 price 的相關係數）、${info.length - nNum} 個類別特徵（右側為類別數，One-Hot 展開）。`;
+  document.getElementById('featGrid').innerHTML = info.map(f => f.type === 'numeric'
+    ? `<div class="feat num"><span class="mono">${f.name}<span class="zh">${ZH[f.name] || ''}</span></span><span class="t mono">r = ${f.corr.toFixed(2)}</span></div>`
+    : `<div class="feat cat"><span class="mono">${f.name}<span class="zh">${ZH[f.name] || ''}</span></span><span class="t">${f.levels} 類</span></div>`).join('');
+
+  function renderSizeBar() {
+    document.getElementById('sizeSeg').innerHTML = SIZES.map(s =>
+      `<button type="button" class="${s === n ? 'active' : ''}" data-n="${s}">${s} 筆</button>`).join('');
+    document.querySelectorAll('#sizeSeg button').forEach(b => b.onclick = () => { n = +b.dataset.n; renderAll(); });
+    document.getElementById('sizeHint').textContent = `訓練 ${n} 筆 → 預測 ${ds.n_test} 筆`;
+    document.getElementById('rankDesc').textContent =
+      `訓練 ${n} 筆時，五個模型依 ${ds.n_test} 筆預測的 RMSE 由低到高排序；最佳參數由訓練集 5-fold CV 網格搜尋決定。點卡片看詳細結果。`;
+    document.getElementById('compareDesc').textContent =
+      `訓練 ${n} 筆時的各項誤差，綠色為該欄最佳值；Train RMSE 遠低於 Test RMSE 代表可能 overfit。`;
+  }
+
+  // ---------------------------------------------------------------- 排名卡片
+  function renderRanks() {
+    document.getElementById('ranks').innerHTML = ranked().map((m, i) => {
+      const r = run(m);
+      return `<div class="card rank-card ${m.key === current ? 'active' : ''}" data-key="${m.key}" style="--mc:${colorOf(m.key)}">
+        <div class="rank-no">#${i + 1}${i === 0 ? ' 最佳' : ''}</div>
+        <div class="rank-name">${m.name}</div>
+        <div class="rank-en">${m.en}</div>
+        <div class="rank-rmse mono">${money(r.test.rmse)} <small>RMSE</small></div>
+        <div class="rank-meta"><span>R² <b class="mono">${r.test.r2.toFixed(4)}</b></span><span>MAE <b class="mono">${money(r.test.mae)}</b></span></div>
+        <div class="rank-params mono">${Object.entries(r.best_params).map(([k, v]) => `${k}=${num(v)}`).join(', ')}</div>
+      </div>`;
+    }).join('');
+    document.querySelectorAll('.rank-card').forEach(el => el.onclick = () => {
+      current = el.dataset.key; renderAll();
+      document.getElementById('detail').scrollIntoView({ behavior: 'smooth' });
+    });
+  }
+
+  // ---------------------------------------------------------------- 圖表工具
+  const charts = {};
+  function make(id, cfg) {
+    const ch = charts[id];
+    if (ch && ch.config.type === cfg.type) { ch.data = cfg.data; ch.options = cfg.options; ch.update(); }
+    else { ch?.destroy(); charts[id] = new Chart(document.getElementById(id), cfg); }
+  }
+  function baseOpts() {
+    const grid = css('--border'), text = css('--muted');
+    return {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+      plugins: { legend: { labels: { color: text, boxWidth: 12, font: { family: 'Noto Sans TC' } } }, tooltip: { callbacks: {} } },
+      scales: { x: { ticks: { color: text }, grid: { color: grid } }, y: { ticks: { color: text }, grid: { color: grid } } },
+    };
+  }
+  const axisTitle = (o, x, y) => {
+    o.scales.x.title = { display: true, text: x, color: css('--muted') };
+    o.scales.y.title = { display: true, text: y, color: css('--muted') };
+    return o;
+  };
+
+  // matplotlib 風格：白底、四邊黑框、無格線、#1f77b4 藍色折線
+  const mplFrame = {
+    id: 'mplFrame',
+    beforeDraw(chart) {
+      const { ctx, width, height } = chart;
+      ctx.save(); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height); ctx.restore();
+    },
+    afterDraw(chart) {
+      const { ctx, chartArea: a } = chart;
+      ctx.save(); ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.strokeRect(a.left, a.top, a.right - a.left, a.bottom - a.top); ctx.restore();
+    },
+  };
+  function mplChart(id, title, yTitle, curve, key) {
+    const black = '#000', font = { family: 'DejaVu Sans, Arial, sans-serif' };
+    make(id, {
+      type: 'line',
+      data: { datasets: [{
+        data: curve.map(c => ({ x: c.k, y: c[key] })),
+        borderColor: '#1f77b4', backgroundColor: '#1f77b4', pointRadius: 4, borderWidth: 1.5, tension: 0,
+      }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: title, color: black, font: { ...font, size: 14, weight: 'normal' } },
+          tooltip: { callbacks: {
+            title: items => `${items[0].raw.x} 個特徵`,
+            label: item => `${yTitle}: ${key === 'rmse' ? fmt(item.raw.y) : item.raw.y.toFixed(6)}`,
+            afterLabel: item => '加入：' + curve[item.dataIndex].added,
+          } },
+        },
+        scales: {
+          x: { type: 'linear', min: 0, max: curve.length + 1, grid: { display: false }, border: { color: black },
+               ticks: { color: black, stepSize: 5, font },
+               title: { display: true, text: 'Number of Features', color: black, font } },
+          y: { grid: { display: false }, border: { color: black }, grace: '5%',
+               ticks: { color: black, font }, title: { display: true, text: yTitle, color: black, font } },
+        },
+      },
+      plugins: [mplFrame],
+    });
+  }
+
+  // ---------------------------------------------------------------- 學習曲線
+  function renderLearningCurve() {
+    const sets = key => models.map(m => ({
+      label: m.name, data: SIZES.map(s => run(m, s).test[key]),
+      borderColor: colorOf(m.key), backgroundColor: colorOf(m.key), tension: 0,
+      pointRadius: SIZES.map(s => s === n ? 7 : 4), borderWidth: m.key === current ? 3 : 1.5,
+    }));
+    const opts = y => {
+      const o = axisTitle(baseOpts(), 'Training Size（訓練筆數）', y);
+      o.plugins.tooltip.callbacks.title = items => `訓練 ${items[0].label} 筆`;
+      return o;
+    };
+    make('lcRmse', { type: 'line', data: { labels: SIZES, datasets: sets('rmse') }, options: opts('RMSE') });
+    make('lcR2', { type: 'line', data: { labels: SIZES, datasets: sets('r2') }, options: opts('R-squared') });
+
+    const bestAt = Object.fromEntries(SIZES.map(s => [s, Math.min(...models.map(m => run(m, s).test.rmse))]));
+    document.getElementById('lcTable').innerHTML =
+      `<thead><tr><th>模型（預測集 RMSE / R²）</th>${SIZES.map(s => `<th class="${s === n ? 'sel' : ''}">訓練 ${s} 筆</th>`).join('')}<th>${SIZES[0]} → ${FINAL} 筆 RMSE 變化</th></tr></thead><tbody>` +
+      models.map(m => {
+        const first = run(m, SIZES[0]).test.rmse, last = run(m, FINAL).test.rmse;
+        const pct = (last / first - 1) * 100;
+        return `<tr><td><span class="dot" style="background:${colorOf(m.key)}"></span>${m.name}</td>` +
+          SIZES.map(s => { const t = run(m, s).test;
+            return `<td class="mono ${s === n ? 'sel' : ''} ${t.rmse === bestAt[s] ? 'best' : ''}">${money(t.rmse)} <span style="color:var(--muted)">/ ${t.r2.toFixed(3)}</span></td>`; }).join('') +
+          `<td class="mono ${pct < 0 ? 'neg' : 'pos'}">${pct < 0 ? '−' : '+'}${Math.abs(pct).toFixed(1)}%</td></tr>`;
+      }).join('') + '</tbody>';
+  }
+
+  // ---------------------------------------------------------------- 單一模型
+  const TILE_METRICS = [
+    ['RMSE', r => r.test.rmse, 'min', v => fmt(v)],
+    ['MSE', r => r.test.mse, 'min', v => money(v)],
+    ['MAE', r => r.test.mae, 'min', v => fmt(v)],
+    ['R²', r => r.test.r2, 'max', v => v.toFixed(4)],
+    ['Adj. R²', r => r.test.adj_r2, 'max', v => v.toFixed(4)],
+    ['MAPE', r => r.test.mape, 'min', v => v.toFixed(2) + '%'],
+    ['最大誤差', r => r.test.max_error, 'min', v => money(v)],
+    ['Train RMSE', r => r.train.rmse, null, v => fmt(v)],
+    ['CV RMSE', r => r.cv_rmse, 'min', v => fmt(v)],
+  ];
+
+  function renderTabs() {
+    document.getElementById('tabs').innerHTML = models.map(m =>
+      `<button type="button" class="tab ${m.key === current ? 'active' : ''}" data-key="${m.key}" style="--mc:${colorOf(m.key)}">${m.name}</button>`).join('');
+    document.querySelectorAll('.tab').forEach(el => el.onclick = () => { current = el.dataset.key; renderAll(); });
+  }
+
+  function renderDetail() {
+    const m = byKey[current], r = run(m), fin = run(m, FINAL);
+    document.getElementById('modelInfo').innerHTML = `
+      <div><h3>${m.name}（訓練 ${n} 筆）</h3><div class="module mono">${m.module} · ${Object.entries(r.best_params).map(([k, v]) => `${k}=${num(v)}`).join(', ')}</div></div>
+      <p class="desc">${m.desc}</p>`;
+
+    document.getElementById('tiles').innerHTML = TILE_METRICS.map(([lbl, f, dir, show]) => {
+      const v = f(r), d = v - f(fin);
+      let delta = '';
+      if (dir && n !== FINAL) {
+        const better = dir === 'min' ? d < 0 : d > 0;
+        delta = `<div class="delta ${better ? 'up' : 'down'}">${better ? '▲ 優於' : '▼ 差於'} ${FINAL} 筆 ${show(Math.abs(d))}</div>`;
+      } else if (dir) delta = `<div class="delta">最終模型（${FINAL} 筆）</div>`;
+      return `<div class="tile"><div class="lbl">${lbl}</div><div class="num mono">${show(v)}</div>${delta}</div>`;
+    }).join('');
+
+    // 使用者提供的那張圖：RMSE / R² by Number of Features
+    document.getElementById('mplTitle').textContent = `📈 特徵數量 vs 誤差（${m.name}，訓練 ${n} 筆）`;
+    mplChart('mplRmse', 'RMSE by Number of Features', 'RMSE', r.feature_curve, 'rmse');
+    mplChart('mplR2', 'R-squared by Number of Features', 'R-squared', r.feature_curve, 'r2');
+    const minK = r.feature_curve.reduce((a, c) => c.rmse < a.rmse ? c : a, r.feature_curve[0]);
+    document.getElementById('fsTable').innerHTML =
+      `<thead><tr><th>Number of Features</th><th class="l">Added Feature</th><th>RMSE</th><th>R-squared</th><th>Train RMSE</th><th>Train R²</th></tr></thead><tbody>` +
+      r.feature_curve.map(c => `<tr><td>${c.k}</td><td class="l mono">+ ${c.added}</td>
+        <td class="mono ${c === minK ? 'best' : ''}">${fmt(c.rmse)}</td><td class="mono">${c.r2.toFixed(6)}</td>
+        <td class="mono">${fmt(c.train_rmse)}</td><td class="mono">${c.train_r2.toFixed(6)}</td></tr>`).join('') + '</tbody>';
+
+    // 41 筆最終預測對照
+    document.getElementById('predTable').innerHTML =
+      `<thead><tr><th>#</th><th class="l">CarName</th><th class="l">carbody</th><th>enginesize</th><th>horsepower</th><th>實際 price</th>` +
+      SIZES.map(s => `<th class="${s === n ? 'sel' : ''}">訓練 ${s} 筆預測</th>`).join('') +
+      `<th class="sel">誤差（${n} 筆）</th><th class="sel">誤差 %</th></tr></thead><tbody>` +
+      R.test_samples.map((s, i) => {
+        const p = r.predictions[i], e = s.actual - p;
+        return `<tr><td>${s.index}</td><td class="l">${s.name}</td><td class="l">${s.carbody}</td><td class="mono">${s.enginesize}</td><td class="mono">${s.horsepower}</td><td class="mono">${fmt(s.actual)}</td>` +
+          SIZES.map(sz => `<td class="mono ${sz === n ? 'sel' : ''}">${fmt(run(m, sz).predictions[i])}</td>`).join('') +
+          `<td class="mono sel ${e > 0 ? 'neg' : 'pos'}">${e > 0 ? '+' : ''}${fmt(e)}</td>
+           <td class="mono sel">${(Math.abs(e) / s.actual * 100).toFixed(2)}%</td></tr>`;
+      }).join('') +
+      `<tr><td colspan="6"><b>RMSE</b></td>${SIZES.map(sz => `<td class="mono ${sz === n ? 'sel' : ''}"><b>${fmt(run(m, sz).test.rmse)}</b></td>`).join('')}<td class="sel"></td><td class="sel"></td></tr>` +
+      '</tbody>';
+
+    // 實際 vs 預測：四種訓練筆數疊在一起
+    const actual = R.test_samples.map(s => s.actual);
+    const all = actual.concat(...SIZES.map(s => run(m, s).predictions));
+    const lo = Math.min(...all) * 0.95, hi = Math.max(...all) * 1.05;
+    const sOpts = axisTitle(baseOpts(), 'Actual Price', 'Predicted Price');
+    sOpts.scales.x = { ...sOpts.scales.x, type: 'linear', min: lo, max: hi };
+    sOpts.scales.y = { ...sOpts.scales.y, min: lo, max: hi };
+    make('scatterChart', { type: 'scatter', data: { datasets: [
+      ...SIZES.map(s => ({
+        label: `訓練 ${s} 筆`, data: actual.map((a, i) => ({ x: a, y: run(m, s).predictions[i] })),
+        backgroundColor: sizeColor(s), borderColor: s === n ? css('--text') : 'transparent', borderWidth: 1.5,
+        pointRadius: s === n ? 7 : 4,
+      })),
+      { label: 'y = x', type: 'line', data: [{ x: lo, y: lo }, { x: hi, y: hi }], borderColor: css('--bad'), borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5 },
+    ] }, options: sOpts });
+
+    // 係數：One-Hot 展開後欄位很多，只畫絕對值最大的 20 個
+    const TOP = 20;
+    const zero = r.coef.filter(c => Math.abs(c.value) < 1e-9).length;
+    const top = [...r.coef].sort((a, b) => Math.abs(b.value) - Math.abs(a.value)).slice(0, TOP);
+    document.getElementById('coefTitle').textContent =
+      `標準化係數 Top ${TOP}（共 ${r.coef.length} 欄${zero ? `，${zero} 欄被壓成 0` : ''}）`;
+    const cOpts = baseOpts();
+    cOpts.indexAxis = 'y';
+    cOpts.plugins.legend.display = false;
+    cOpts.scales.y.ticks.autoSkip = false;
+    cOpts.plugins.tooltip.callbacks.label = item => (Math.abs(item.raw) < 1e-9 ? '係數 = 0（被淘汰）' : fmt(item.raw));
+    make('coefChart', { type: 'bar', data: {
+      labels: top.map(c => c.name),
+      datasets: [{ data: top.map(c => c.value), backgroundColor: top.map(c => Math.abs(c.value) < 1e-9 ? css('--border') : c.value > 0 ? css('--good') : css('--bad')) }],
+    }, options: cOpts });
+  }
+
+  // 下載仿 matplotlib 的兩張圖（合併成一張 PNG）
+  document.getElementById('dlBtn').onclick = () => {
+    const a = charts.mplRmse.canvas, b = charts.mplR2.canvas;
+    const out = document.createElement('canvas');
+    out.width = a.width + b.width; out.height = Math.max(a.height, b.height);
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(a, 0, 0); ctx.drawImage(b, a.width, 0);
+    const link = document.createElement('a');
+    link.download = `${current}_train${n}_features_rmse_r2.png`;
+    link.href = out.toDataURL('image/png');
+    link.click();
+  };
+
+  // ---------------------------------------------------------------- 五模型比較
+  function renderCompare() {
+    const cols = [
+      ['MSE', r => r.test.mse, 'min', v => money(v)],
+      ['RMSE', r => r.test.rmse, 'min', v => fmt(v)],
+      ['MAE', r => r.test.mae, 'min', v => fmt(v)],
+      ['R²', r => r.test.r2, 'max', v => v.toFixed(4)],
+      ['Adj. R²', r => r.test.adj_r2, 'max', v => v.toFixed(4)],
+      ['MAPE', r => r.test.mape, 'min', v => v.toFixed(2) + '%'],
+      ['最大誤差', r => r.test.max_error, 'min', v => money(v)],
+      ['Train RMSE', r => r.train.rmse, null, v => fmt(v)],
+      ['CV RMSE', r => r.cv_rmse, 'min', v => fmt(v)],
+    ];
+    const list = ranked();
+    const top = cols.map(([, f, dir]) => dir && (dir === 'min' ? Math.min : Math.max)(...list.map(m => f(run(m)))));
+    document.getElementById('metricsTable').innerHTML =
+      `<thead><tr><th>模型（訓練 ${n} 筆）</th>${cols.map(c => `<th>${c[0]}</th>`).join('')}</tr></thead><tbody>` +
+      list.map((m, i) => `<tr><td><span class="dot" style="background:${colorOf(m.key)}"></span>#${i + 1} ${m.name}</td>` +
+        cols.map(([, f, , show], j) => `<td class="mono ${f(run(m)) === top[j] ? 'best' : ''}">${show(f(run(m)))}</td>`).join('') + '</tr>').join('') + '</tbody>';
+
+    const names = list.map(m => m.name), colors = list.map(m => colorOf(m.key));
+    make('errChart', { type: 'bar', data: { labels: names, datasets: [
+      { label: 'RMSE', data: list.map(m => run(m).test.rmse), backgroundColor: colors },
+      { label: 'MAE', data: list.map(m => run(m).test.mae), backgroundColor: colors.map(c => c + '66') },
+    ] }, options: baseOpts() });
+    make('fitChart', { type: 'bar', data: { labels: names, datasets: [
+      { label: 'Train RMSE', data: list.map(m => run(m).train.rmse), backgroundColor: css('--muted') + '88' },
+      { label: 'Test RMSE', data: list.map(m => run(m).test.rmse), backgroundColor: css('--accent') },
+    ] }, options: baseOpts() });
+
+    const lineSets = key => models.map(m => ({
+      label: m.name, data: run(m).feature_curve.map(c => c[key]),
+      borderColor: colorOf(m.key), backgroundColor: colorOf(m.key), tension: 0, pointRadius: 4,
+      borderWidth: m.key === current ? 3 : 1.5,
+    }));
+    const kOpts = y => {
+      const o = axisTitle(baseOpts(), 'Number of Features', y);
+      o.plugins.tooltip.callbacks.afterLabel = ctx => '+ ' + run(models[ctx.datasetIndex]).feature_curve[ctx.dataIndex].added;
+      return o;
+    };
+    const ks = ds.features.map((_, i) => i + 1);
+    make('kRmseChart', { type: 'line', data: { labels: ks, datasets: lineSets('rmse') }, options: kOpts('RMSE') });
+    make('kR2Chart', { type: 'line', data: { labels: ks, datasets: lineSets('r2') }, options: kOpts('R-squared') });
+  }
+
+  function renderAll() {
+    renderSizeBar(); renderRanks(); renderLearningCurve(); renderTabs(); renderDetail(); renderCompare();
+  }
+  renderAll();
+})();
+</script>
+</body>
+</html>

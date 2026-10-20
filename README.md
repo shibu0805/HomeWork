@@ -49,6 +49,8 @@ flowchart TD
 ---
 
 ### 3️⃣ 作業三：50 Startups 回歸分析 — 訓練筆數 × 五種線性回歸 (`03-ml-regression/regression.html`)
+- 🌐 **線上預覽**：[https://shibu0805.github.io/HomeWork/03-ml-regression/regression.html](https://shibu0805.github.io/HomeWork/03-ml-regression/regression.html)
+- 📖 詳細說明：[03-ml-regression/README.md](03-ml-regression/README.md)
 - **簡介**：用 `R&D Spend`、`Administration`、`Marketing Spend`、`State` 預測新創公司 `Profit`，比較 `sklearn.linear_model` 五種模型：**LinearRegression、Ridge、Lasso、ElasticNet、SGDRegressor**。
 - **實驗設計**：固定 10 筆作為預測集（`random_state=0`），分別用 **10 / 20 / 30 / 40 筆**訓練，比較最終模型的預測誤差；每種筆數都以訓練集 5-fold CV 網格搜尋最佳參數。
 - **特色**：
@@ -65,13 +67,35 @@ flowchart TD
 
 ---
 
+### 4️⃣ 作業四：Car Price 多元線性回歸 — 24 個特徵 × 五種線性回歸 (`04-car-price-regression/regression.html`)
+- 🌐 **線上預覽**：[https://shibu0805.github.io/HomeWork/04-car-price-regression/regression.html](https://shibu0805.github.io/HomeWork/04-car-price-regression/regression.html)
+- 📖 詳細說明：[04-car-price-regression/README.md](04-car-price-regression/README.md)
+- **簡介**：讓電腦看 205 台車的 24 項規格（馬力、引擎大小、廠牌…）和售價，學會估車價；再比較 5 種線性回歸哪個最準、需要多少資料才估得準。
+- **資料集**：[Kaggle — Car Price Prediction](https://www.kaggle.com/datasets/hellbuoy/car-price-prediction)，205 筆，**24 個特徵**（15 個數值 + 9 個類別），預測車價 `price`。
+- **前處理**：`CarName` 取出廠牌並修正拼錯的名稱、`cylindernumber` 轉數字，類別特徵 One-Hot 編碼後全部標準化。
+- **實驗設計**：固定 41 筆（20%）作為預測集（`random_state=0`），分別用 **40 / 80 / 120 / 164 筆**訓練五種模型（LinearRegression、Ridge、Lasso、ElasticNet、SGDRegressor），每種筆數都以訓練集 5-fold CV 網格搜尋最佳參數。
+- **特色**：
+  - 🚗 **特徵總覽**：24 個特徵的型態、類別數與和 price 的相關係數。
+  - 📈 **Forward Selection 1 ~ 24 個特徵**：類別特徵的 One-Hot 欄位整組加入，畫出 RMSE / R² by Number of Features。
+  - 🎯 **係數 Top 20**：看出哪些廠牌、引擎規格最影響車價，以及 Lasso 把哪些欄位壓成 0。
+  - ⚙️ **GitHub Actions 自動執行**：每次 push 由 `.github/workflows/pages.yml` 重新跑 `analyze.py` 並部署到 GitHub Pages。
+- **檔案**：
+  - `analyze.py`：執行所有實驗並輸出 `results.json` / `results.js`（`python analyze.py`）
+  - `model_lab.py`：資料前處理、五種模型與誤差計算
+  - `regression.html`：結果視覺化網頁
+  - `data/CarPrice_Assignment.csv`：資料集
+
+---
+
 ## 📁 資料夾結構
 
 ```
 HomeWork/
 ├── 01-personal-homepage/   # 作業一：個人首頁 (index.html / style.css / script.js)
 ├── 02-weather-dashboard/   # 作業二：天氣儀表板 (weather.html / weather.css / weather.js / config.js / taiwan-map.js)
-└── 03-ml-regression/       # 作業三：回歸分析 (regression.html / analyze.py / model_lab.py / Notebook)
+├── 03-ml-regression/       # 作業三：回歸分析 (regression.html / analyze.py / model_lab.py / Notebook)
+├── 04-car-price-regression/ # 作業四：Car Price 多元線性回歸 (regression.html / analyze.py / model_lab.py)
+└── .github/workflows/      # GitHub Actions：自動執行分析並部署 GitHub Pages
 ```
 
 ---
@@ -83,6 +107,7 @@ HomeWork/
 - 🏠 **個人作業首頁**：[https://shibu0805.github.io/HomeWork/01-personal-homepage/index.html](https://shibu0805.github.io/HomeWork/01-personal-homepage/index.html)
 - 🌦️ **CWA 動態氣象觀測儀表板**：[https://shibu0805.github.io/HomeWork/02-weather-dashboard/weather.html](https://shibu0805.github.io/HomeWork/02-weather-dashboard/weather.html)
 - 📊 **DIC2-多元線性回歸 50-startup**：[https://shibu0805.github.io/HomeWork/03-ml-regression/regression.html](https://shibu0805.github.io/HomeWork/03-ml-regression/regression.html)
+- 🚗 **Car Price 多元線性回歸（24 個特徵）**：[https://shibu0805.github.io/HomeWork/04-car-price-regression/regression.html](https://shibu0805.github.io/HomeWork/04-car-price-regression/regression.html)
 
 ---
 
